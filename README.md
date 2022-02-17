@@ -41,7 +41,7 @@ Usage of ./goserve/others/novnc/mproxy:
  ...
  ```
  # Thanks
- Thanks to https://github.com/pgaskin/easy-novnc, I learnt a lot from it to handle noVNC
+ Thanks to https://github.com/pgaskin/easy-novnc, I learnt a lot from it to handle noVNC   
  Thanks to https://github.com/novnc/noVNC, a great web VNC 
  
  
