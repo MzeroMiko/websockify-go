@@ -24,6 +24,12 @@ Usage of ./goserve/others/novnc/mproxy:
         magic number for vnc (default "RFB")
  ```
  
+ # build
+ go env -w GO111MODULE=on
+ go env -w GOPROXY=https://goproxy.cn
+ go build --ldflags '-w -s' mproxy.go
+ upx mproxy
+ 
  # Examples
  ```bash
  mproxy -protocal novnc -novncprefix /vnc -novncroot noVNC-1.3.0/ -bindaddr :8002 -backaddr 127.0.0.1:5900 >> mproxy.log 2>&1
@@ -34,7 +40,7 @@ Usage of ./goserve/others/novnc/mproxy:
  ```
  # Thanks
  Thanks to https://github.com/pgaskin/easy-novnc, I learnt a lot from it to handle noVNC
- Thanks to https://github.com/novnc/noVNC
+ Thanks to https://github.com/novnc/noVNC, a great web VNC 
  
  
  
