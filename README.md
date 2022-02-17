@@ -25,10 +25,12 @@ Usage of ./goserve/others/novnc/mproxy:
  ```
  
  # build
+ ```bash
  go env -w GO111MODULE=on
  go env -w GOPROXY=https://goproxy.cn
  go build --ldflags '-w -s' mproxy.go
  upx mproxy
+ ```
  
  # Examples
  ```bash
