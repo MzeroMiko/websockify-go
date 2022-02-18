@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
     "flag"
-	"io"
+	// "io"
 	// "io/ioutil"
     "net"
 	"net/url"
@@ -297,76 +297,82 @@ func NewNoVNCProxy(ins map[string]interface{}) interface{} {
 	return &instance
 }
 
-type mReader struct {
-	reader io.Reader
-	magic, check []byte   // []byte("RFB"); check magic
-	remain int; fail bool // remain unchecked byte. check fail
-}
-
-// to implement the interface io.Reader; copy from https://github.com/pgaskin/easy-novnc
-func (this *mReader) Read(buf []byte) (n int, err error) {
-	if this.fail {
-		return 0, io.EOF
-	}
-	n, err = this.reader.Read(buf)
-	if err == nil && n > 0 && this.remain > 0 {
-		this.remain -= copy(this.check[len(this.magic) - this.remain:], buf[:n])
-		for i := 0; i < len(this.magic) - this.remain; i++ {
-			if this.check[i] != this.magic[i] {
-				this.fail = true
-				return 0, io.EOF
-			}
-		}
-	}
-	return n, err
-}
-
-func (this NoVNCProxy) newReader(r io.Reader) *mReader {
-	return &mReader{
-		reader: r,
-		magic: this.vncmagic, 
-		check: make([]byte, len(this.vncmagic)),
-		remain: len(this.vncmagic),
-		fail: false,
-	}
-}
-
-// copy from https://github.com/pgaskin/easy-novnc
 func (this NoVNCProxy) wsProxyHandler(addr string) websocket.Handler {
-	newReader := this.newReader
 	return func(ws *websocket.Conn) {
+		magic := this.vncmagic
+		lenmagic := len(magic)
+		checked := false
+		checkInd := 0		
+		
 		conn, err := net.Dial("tcp", addr)
 		if err != nil {
 			ws.Close()
 			return
 		}
 		ws.PayloadType = websocket.BinaryFrame
-		reader := newReader(conn)
-		send := func (dst io.Writer, src io.Reader, done chan error) {
-			_, err := io.Copy(dst, src)
-			// if err != nil {
-			// 	fmt.Println("------------")
-			// 	fmt.Println("tcp: ", conn)
-			// 	fmt.Println("ws: ", ws)
-			// 	fmt.Println("reader: ", reader)
-			// 	fmt.Println("src: ", src)
-			// 	fmt.Println("dst: ", dst)
-			// 	fmt.Println("err: ", err)
-			// 	fmt.Println("------------")
-			// }
-			done <- err
-		}
-		
-		done := make(chan error)
-		go send(conn, ws, done)
-		go send(ws, reader, done)
-		<-done
-		if reader.fail {
-			fmt.Printf("connect to vnc failed, get %#v\n", string(reader.check))
+
+		tcp2ws := func (close chan error) {
+			from := conn
+			to := ws
+
+			buffer := make([]byte, 4096)
+			for {
+				nfrom, err := from.Read(buffer)
+				if err != nil {
+					close <- err
+					return
+				} else if !checked && nfrom > 0 {
+					for i := 0; i < nfrom; i++ {
+						if ind := checkInd + i; ind < lenmagic {
+							if buffer[i] != magic[i] {
+								close <- err
+								return
+							}							
+						} else {
+							checked = true
+						}
+					}
+				}
+				nto, err := to.Write(buffer[:nfrom])
+				if err != nil || nto != nfrom {
+					close <- err
+					return
+				}
+			}
+
 		} 
+
+		ws2tcp := func (close chan error) {
+			from := ws
+			to := conn
+
+			buffer := make([]byte, 4096)
+			for {
+				nfrom, err := from.Read(buffer)
+				if err != nil {
+					close <- err
+					return
+				}
+				nto, err := to.Write(buffer[:nfrom])
+				if err != nil || nto != nfrom {
+					close <- err
+					return
+				}
+			}
+
+		}
+
+		close := make(chan error)
+		go ws2tcp(close)
+		go tcp2ws(close)
+		err = <- close
+		if err != nil {
+			fmt.Println("ws-tcp error:", err)
+		}
+
 		conn.Close()
 		ws.Close()
-		<-done
+		<-close
 	}
 }
 
