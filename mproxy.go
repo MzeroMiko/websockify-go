@@ -325,7 +325,7 @@ func (this NoVNCProxy) wsProxyHandler(addr string) websocket.Handler {
 					for i := 0; i < nfrom; i++ {
 						if ind := checkInd + i; ind < lenmagic {
 							if buffer[i] != magic[i] {
-								close <- err
+								close <- fmt.Errorf("Magic: %s check failed.", string(magic))
 								return
 							}							
 						} else {
