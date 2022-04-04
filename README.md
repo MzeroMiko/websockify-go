@@ -31,6 +31,7 @@ Usage of ./wsnovnc:
  ```
  
  # Examples
+ ## if no cer file or key file set, it would generate a self signed one as a string send into http.Server
  ```bash
 /novnc/wsnovnc --tls -novncprefix /websockify -novncroot /novnc/noVNC -bindaddr [::]:8000 -backaddr 127.0.0.1:5900 > /tmp/novnc.log 2>&1 &
  ...
